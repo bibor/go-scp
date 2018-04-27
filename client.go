@@ -69,5 +69,6 @@ func (a *Client) Copy(r io.Reader, remotePath string, permissions string, size i
 }
 
 func (a *Client) Close() {
+	a.Session.Close()
 	a.client.Close()
 }
