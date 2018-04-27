@@ -14,11 +14,13 @@ type Client struct {
 	Host         string
 	ClientConfig *ssh.ClientConfig
 	Session      *ssh.Session
+	client       *ssh.Client
 }
 
 // Connects to the remote SSH server, returns error if it couldn't establish a session to the SSH server
 func (a *Client) Connect() error {
 	client, err := ssh.Dial("tcp", a.Host, a.ClientConfig)
+	a.client = client
 	if err != nil {
 		return err
 	}
@@ -50,8 +52,13 @@ func (a *Client) Copy(r io.Reader, remotePath string, permissions string, size i
 	filename := path.Base(remotePath)
 	directory := path.Dir(remotePath)
 
+	w, err := a.Session.StdinPipe()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	go func() {
-		w, _ := a.Session.StdinPipe()
 		defer w.Close()
 		fmt.Fprintln(w, "C"+permissions, size, filename)
 		io.Copy(w, r)
@@ -59,4 +66,8 @@ func (a *Client) Copy(r io.Reader, remotePath string, permissions string, size i
 	}()
 
 	a.Session.Run("/usr/bin/scp -t " + directory)
+}
+
+func (a *Client) Close() {
+	a.client.Close()
 }
